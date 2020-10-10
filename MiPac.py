@@ -8,6 +8,7 @@ import getopt
 import logging
 import sys
 from time import sleep
+from . import Scanner
 
 
 
@@ -22,6 +23,7 @@ def parseOptions(argv):
     target_ip = ""
     iface = ""
     cut = False
+    scan = ""
 
     try:
         opts, args = getopt.getopt(argv, "hw:l:psafk",
@@ -52,9 +54,11 @@ def parseOptions(argv):
                 redirect = True
             elif opt in ("-i", "--iface"):
                 iface = arg
-            elif opt in ("-c", "--cut-net")
+            elif opt in ("-c", "--cut-net"):
                 cut = True
-        return logFile, logLevel, listenPort, spoofFavicon, killSessions, target_ip, iface, redirect, router_ip, cut
+            elif opt in ("-s", "--scan"):
+                scan = arg
+        return logFile, logLevel, listenPort, spoofFavicon, killSessions, target_ip, iface, redirect, router_ip, cut, scan
 
     except getopt.GetoptError:
         Strip().usage()
@@ -133,13 +137,15 @@ def final_spoof(target_ip, router_ip):
 
 def main(argv):
     enable_forward()
-    (logFile, logLevel, listenPort, spoofFavicon, killSessions, target_ip, iface, redirect, router_ip, cut) = parseOptions(argv)
+    (logFile, logLevel, listenPort, spoofFavicon, killSessions, target_ip, iface, redirect, router_ip, cut, scan) = parseOptions(argv)
     start_new_thread(final_spoof(target_ip, router_ip), )
     start_new_thread(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions), )
     if cut:
         queue(cut_net)
     elif redirect:
         queue(redirect_process)
+    elif scan:
+        Scanner.run(scan)
     else:
         sniff(iface)
 
