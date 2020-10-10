@@ -1,7 +1,7 @@
 import scapy.all as scapy
 from scapy.layers import http
 import subprocess
-# import netfilterqueue
+import netfilterqueue
 from strip import Strip
 from _thread import *
 import getopt
