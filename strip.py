@@ -43,7 +43,7 @@ class Strip():
 
     def usage(self):
         print("\nMipac " + gVersion + " by Omar Ashraf")
-        print("Usage: python Packet-sniffer.py <options>\n")
+        print("Usage: python3 MiPac.py <options>\n")
         print("Options:")
         print("-w <filename>, --write=<filename> Specify file to log to (optional).")
         print("-p , --post                       Log only SSL POSTs. (default)")
@@ -52,47 +52,13 @@ class Strip():
         print("-l <port>, --listen=<port>        Port to listen on (default 80).")
         print("-f , --favicon                    Substitute a lock favicon on secure requests.")
         print("-k , --killsessions               Kill sessions in progress.")
-        print("-h, --help                        Print this help message.")
-        print("-r, --redirect                    Enter redirect IP, Must Specify a target First")
-        print("-t, --target_ip                   Specify Target IP")
-        print("-i, --iface                       Specify The Network Interface of the Attck")
+        print("-h,  --help                       Print this help message.")
+        print("-r,  --redirect=ip                  Enter redirect IP, Must Specify a target First")
+        print("-t,  --target_ip                  Specify Target IP")
+        print("-i,  --iface                      Specify The Network Interface of the Attack")
+        print("-c,  --cut-net                    Cut the internet from specified user")
+        print("-s,  --scan=CIDR                 Scan the network for live hosts")
 
-    # def parseOptions(self, argv):
-    #     self.logFile = 'sslstrip.log'
-    #     self.logLevel = logging.WARNING
-    #     self.listenPort = 10000
-    #     self.spoofFavicon = False
-    #     self.killSessions = False
-    #
-    #     try:
-    #         opts, args = getopt.getopt(argv, "hw:l:psafk",
-    #                                    ["help", "write=", "post", "ssl", "all", "listen=",
-    #                                     "favicon", "killsessions"])
-    #
-    #         for opt, arg in opts:
-    #             if opt in ("-h", "--help"):
-    #                 self.usage()
-    #                 sys.exit()
-    #             elif opt in ("-w", "--write"):
-    #                 self.logFile = arg
-    #             elif opt in ("-p", "--post"):
-    #                 self.logLevel = logging.WARNING
-    #             elif opt in ("-s", "--ssl"):
-    #                 self.logLevel = logging.INFO
-    #             elif opt in ("-a", "--all"):
-    #                 self.logLevel = logging.DEBUG
-    #             elif opt in ("-l", "--listen"):
-    #                 self.listenPort = arg
-    #             elif opt in ("-f", "--favicon"):
-    #                 self.spoofFavicon = True
-    #             elif opt in ("-k", "--killsessions"):
-    #                 self.killSessions = True
-    #
-    #         return self.logFile, self.logLevel, self.listenPort, self.spoofFavicon, self.killSessions
-    #
-    #     except getopt.GetoptError:
-    #         self.usage()
-    #         sys.exit(2)
 
     def start(self, logFile, logLevel, listenPort, spoofFavicon, killSessions):
 
