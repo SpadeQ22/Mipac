@@ -1,6 +1,6 @@
 import scapy.all as scapy
 from scapy.layers import http
-import os
+import subprocess
 import netfilterqueue
 from strip import Strip
 from _thread import *
@@ -124,8 +124,10 @@ def cut_net(packet):
 
 
 def enable_forward():
-    os.system("echo '1' > /proc/sys/net/ipv4/ip_forward")
-    os.system("iptables -I FORWARD -j NFQUEUE --queue-num 0")
+    command1 = "echo '1' > /proc/sys/net/ipv4/ip_forward".split()
+    subprocess.call(command1)
+    command2 = "iptables -I FORWARD -j NFQUEUE --queue-num 0".split()
+    subprocess.call(command2)
 
 
 def final_spoof(target_ip, router_ip):
