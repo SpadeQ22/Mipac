@@ -57,7 +57,7 @@ class Strip():
         print("-t,  --target_ip                  Specify Target IP")
         print("-i,  --iface                      Specify The Network Interface of the Attack")
         print("-c,  --cut-net                    Cut the internet from specified user")
-        print("-s,  --scan=CIDR                 Scan the network for live hosts")
+        print("--scan=CIDR                       Scan the network for live hosts")
 
 
     def start(self, logFile, logLevel, listenPort, spoofFavicon, killSessions):

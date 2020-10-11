@@ -1,7 +1,7 @@
 import scapy.all as scapy
 from scapy.layers import http
 import subprocess
-import netfilterqueue
+#import netfilterqueue
 from strip import Strip
 from _thread import *
 import getopt
@@ -55,7 +55,7 @@ def parseOptions(argv):
                 iface = arg
             elif opt in ("-c", "--cut-net"):
                 cut = True
-            elif opt in ("-s", "--scan"):
+            elif opt in ("--scan"):
                 scan = arg
         return logFile, logLevel, listenPort, spoofFavicon, killSessions, target_ip, iface, redirect, router_ip, cut, scan
 
@@ -137,12 +137,13 @@ def main(argv):
      scan) = parseOptions(argv)
     try:
         if scan != "":
-            scany = Scanner
-            scany.run(scan)
+            Scanner().run(scan)
+            sleep(2)
+            sys.exit()
         else:
             enable_forward()
-            start_new_thread(final_spoof(target_ip, router_ip), )
-            start_new_thread(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions), )
+            start_new_thread(final_spoof(target_ip, router_ip))
+            start_new_thread(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions))
             try:
                 if cut:
                     queue(cut_net)
@@ -152,7 +153,6 @@ def main(argv):
                     sniff(iface)
             except Exception:
                 print("error1")
-
     except Exception:
         sys.exit()
 
