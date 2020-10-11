@@ -145,8 +145,8 @@ def main(argv):
         sys.exit()
     else:
         enable_forward()
-        start_new_thread(Strip().start(), (logFile, logLevel, listenPort, spoofFavicon, killSessions))
-        start_new_thread(final_spoof(), (routerIp, targetIp))
+        start_new_thread(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions), )
+        start_new_thread(final_spoof(routerIp, targetIp), )
         try:
             if cutNet:
                 queue(cut_net)
