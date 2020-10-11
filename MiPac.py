@@ -3,12 +3,12 @@ from scapy.layers import http
 import subprocess
 import netfilterqueue
 from strip import Strip
-from _thread import *
 import getopt
 import logging
 import sys
 from time import sleep
 from sslstrip.nscanner import Scanner
+import threading
 
 
 def parseOptions(argv):
@@ -147,8 +147,8 @@ def main(argv):
         sys.exit()
     else:
         enable_forward()
-        start_new_thread(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions), )
-        start_new_thread(final_spoof(routerIp, targetIp), )
+        threading.Thread.run(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions))
+        threading.Thread.run(final_spoof(routerIp, targetIp))
         try:
             if cutNet:
                 queue(cut_net)
